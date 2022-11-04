@@ -2,11 +2,7 @@ env:
   # APP_NAME is normally the same as your pipeline slug
   # if that isn't true, update here
   APP_NAME: ${BUILDKITE_PIPELINE_SLUG}
-  DEPLOYMENT_REPO: ${OVERRIDE_DEPLOY_REPO:-k8s-$APP_NAME}
-  QUAY_REPO: quay.io/equinixmetal/${APP_NAME}
   GOPRIVATE: github.com/equinixmetal/*,go.equinixmetal.net
-  IMAGE_TAG: ${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_COMMIT:0:8}
-  COSIGN_KEY_PATH: cosign.key
 
 steps:
   - label: ":golangci-lint: lint :lint-roller:"
@@ -46,71 +42,3 @@ steps:
             - GOOS=linux
           entrypoint: ./scripts/ci_entrypoint.sh
           command: ["go", "build", "-mod=mod", "-a", "-o", "bin/$APP_NAME"]
-
-  - label: ":docker: docker build and publish"
-    key: "build"
-    depends_on: ["lint", "test", "gobuild"]
-    env:
-      BUILDKITE_PLUGINS_ALWAYS_CLONE_FRESH: "true"
-    commands: |
-      #!/bin/bash
-      echo --- Retrieve Artifacts
-      buildkite-agent artifact download "bin/${APP_NAME}" .
-
-      # make sure it is executable
-      chmod +x bin/${APP_NAME}
-
-      ls -la
-
-      # Save COSIGN_KEY_SECRET to a file
-      echo "\$COSIGN_KEY_SECRET" > ${COSIGN_KEY_PATH}
-    plugins:
-      - ssh://git@github.com/packethost/ssm-buildkite-plugin#v1.0.3:
-          parameters:
-            # Buildkite redacts secrets from the logs as long as
-            # they have the *_SECRET, *_PASSWORD and *_TOKEN suffixes.
-            COSIGN_KEY_SECRET: /buildkite/cosign/cosign-priv-key/v1
-            # COSIGN_PASSWORD is an environment variable that's
-            # expected by cosign
-            COSIGN_PASSWORD: /buildkite/cosign/cosign-priv-key-pass/v1
-      - equinixmetal-buildkite/docker-metadata#v1.0.0:
-          images:
-          - "${QUAY_REPO}"
-          extra_tags:
-          - "${IMAGE_TAG}"
-      - equinixmetal-buildkite/docker-build#v1.1.0:
-          push: true
-          build-args:
-            - NAME=${APP_NAME}
-      - equinixmetal-buildkite/cosign#main:
-          image: "${QUAY_REPO}:${IMAGE_TAG}"
-          keyless: false
-          keyed_config:
-            key: "${COSIGN_KEY_PATH}"
-      - equinixmetal-buildkite/trivy#v1.16.5:
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          security-checks: config,secret,vuln
-          skip-files: 'cosign.key'
-
-  # For main commits, pull-requests will be created to bump the image in the deployment manifest
-  - label: "Bump image tag for main branch builds"
-    depends_on: "build"
-    if: build.branch == 'main'
-    plugins:
-      - first-aml/git-clone:
-          repository: git@github.com:equinixmetal/$DEPLOYMENT_REPO.git
-      - ssh://git@github.com/packethost/ssm-buildkite-plugin#v1.0.3:
-          parameters:
-            GITHUB_TOKEN: /buildkite/github/personal-access-token/v1
-      - ssh://git@github.com/packethost/yaml-update-buildkite-plugin#v1.0.1:
-          dir: $DEPLOYMENT_REPO
-          file: values.yaml
-          values:
-            - .deployment.image.tag=$IMAGE_TAG
-      - ssh://git@github.com/equinixmetal/github-pr-template-buildkite-plugin#v0.2.0: {}
-      # Create Pull Request to main using commit from previous step
-      - envato/github-pull-request#v0.4.0:
-          title: "[buildkite] bump image tag to $IMAGE_TAG"
-          head: buildkite-yaml-update-$BUILDKITE_BUILD_NUMBER
-          base: main
