@@ -25,20 +25,3 @@ steps:
             - "GITHUB_TOKEN"
           entrypoint: ./scripts/ci_entrypoint.sh
           command: ["go", "test", "-cover" ,"-race", "./..."]
-
-  - label: ":golang: build"
-    key: "gobuild"
-    artifact_paths: "bin/${APP_NAME}"
-    plugins:
-      - ssh://git@github.com/packethost/ssm-buildkite-plugin#v1.0.3:
-          parameters:
-            GITHUB_TOKEN: /buildkite/github/personal-access-token/v1
-      - docker#v5.3.0:
-          image: "golang:1.19"
-          environment:
-            - GOPRIVATE
-            - GITHUB_TOKEN
-            - CGO_ENABLED=0
-            - GOOS=linux
-          entrypoint: ./scripts/ci_entrypoint.sh
-          command: ["go", "build", "-mod=mod", "-a", "-o", "bin/$APP_NAME"]
