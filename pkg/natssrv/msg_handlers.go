@@ -1,4 +1,4 @@
-package srv
+package natssrv
 
 import (
 	"github.com/nats-io/nats.go"

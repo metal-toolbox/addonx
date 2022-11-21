@@ -1,6 +1,9 @@
 package reconciler
 
 import (
+	"time"
+
+	"github.com/equinixmetal/addonx/internal/governor"
 	"go.uber.org/zap"
 )
 
@@ -29,10 +32,24 @@ func WithClient(c *ReconcileClient) Option {
 	}
 }
 
+// WithGovernorClient sets governor api client
+func WithGovernorClient(c *governor.Client) Option {
+	return func(r *Reconciler) {
+		r.governorClient = c
+	}
+}
+
 // WithQueue sets nats queue for events
 func WithQueue(q string) Option {
 	return func(r *Reconciler) {
 		r.queue = q
+	}
+}
+
+// WithInterval sets the reconciler interval
+func WithInterval(i time.Duration) Option {
+	return func(r *Reconciler) {
+		r.interval = i
 	}
 }
 

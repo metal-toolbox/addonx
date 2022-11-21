@@ -1,4 +1,4 @@
-package srv
+package natssrv
 
 const (
 	// EventCreate is the action passed on create events
