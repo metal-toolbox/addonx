@@ -3,15 +3,17 @@ package reconciler
 import (
 	"time"
 
-	"github.com/equinixmetal/addonx/internal/governor"
+	"github.com/equinixmetal/addonx/pkg/governor"
 	"go.uber.org/zap"
 )
 
 // Reconciler reconciles with downstream system
 type Reconciler struct {
-	client *ReconcileClient
-	logger *zap.Logger
-	queue  string
+	interval       time.Duration
+	client         *ReconcileClient
+	logger         *zap.Logger
+	queue          string
+	governorClient *governor.Client
 }
 
 // Option is a functional configuration option

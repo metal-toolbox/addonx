@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/equinixmetal/addonx/internal/reconciler"
+	"github.com/equinixmetal/addonx/pkg/reconciler"
 	"github.com/gin-contrib/cors"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
