@@ -27,7 +27,7 @@ type Server struct {
 	AuditFileWriter io.Writer
 	NATSClient      *NATSClient
 	Reconciler      *reconciler.Reconciler
-	MessageHandler  AddonMessageHandler
+	MessageHandlers []AddonMessageHandler
 }
 
 var (

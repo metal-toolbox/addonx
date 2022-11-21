@@ -79,12 +79,14 @@ func (s *Server) registerSubscriptionHandlers() error {
 	// Receive groups channel events
 	n := 1
 	for n < s.NATSClient.queueSize {
-		if _, err := s.NATSClient.conn.QueueSubscribe(prefix+"."+sub, qg, s.MessageHandler.Handle); err != nil {
-			return err
-		}
+		for _, h := range s.MessageHandlers {
+			if _, err := s.NATSClient.conn.QueueSubscribe(prefix+"."+sub, qg, h.Handle); err != nil {
+				return err
+			}
 
-		s.Logger.Debug("added subscriber", zap.String("nats.subscriber_id", fmt.Sprintf("%d", n)))
-		n++
+			s.Logger.Debug("added subscriber", zap.String("nats.subscriber_id", fmt.Sprintf("%d", n)))
+			n++
+		}
 	}
 
 	return nil
