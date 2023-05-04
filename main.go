@@ -1,7 +1,10 @@
+// main is just a placeholder
 package main
 
-import "github.com/equinixmetal/mf-example-microservice/cmd"
+import (
+	"log"
+)
 
 func main() {
-	cmd.Execute()
+	log.Println("main")
 }

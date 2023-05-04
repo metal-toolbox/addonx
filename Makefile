@@ -1,8 +1,6 @@
 all: lint test
-PHONY: test coverage lint golint clean vendor docker-up docker-down unit-test
+PHONY: test coverage lint golint clean vendor unit-test
 GOOS=linux
-# use the working dir as the app name, this should be the repo name
-APP_NAME=$(shell basename $(CURDIR))
 
 test: | unit-test
 
@@ -22,11 +20,7 @@ golint: | vendor
 	@echo Linting Go files...
 	@golangci-lint run --build-tags "-tags testtools"
 
-build:
-	@go mod download
-	@CGO_ENABLED=0 GOOS=linux go build -mod=readonly -v -o bin/${APP_NAME}
-
-clean: docker-clean
+clean:
 	@echo Cleaning...
 	@rm -f app
 	@rm -rf ./dist/
@@ -36,13 +30,3 @@ clean: docker-clean
 vendor:
 	@go mod download
 	@go mod tidy
-
-docker-up: | build
-	@docker-compose build --no-cache --build-arg NAME=${APP_NAME}
-	@docker-compose  -f docker-compose.yml up -d app
-
-docker-down:
-	@docker-compose -f docker-compose.yml down
-
-docker-clean:
-	@docker-compose -f docker-compose.yml down --volumes

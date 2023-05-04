@@ -1,2 +1,6 @@
 bin/*
 coverage.out
+coverage.out
+tmp
+*.out
+.vscode
