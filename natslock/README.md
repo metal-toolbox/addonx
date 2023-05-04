@@ -13,19 +13,19 @@ The current implementation has the potential to introduce a race condition (beca
     // assume there's an existing nc *nats.Conn
 
     // create a jetstream context
-	jets, err := nc.JetStream()
-	if err != nil {
-		return nil, err
-	}
+    jets, err := nc.JetStream()
+    if err != nil {
+        return nil, err
+    }
 
     // initialize the KeyValue store with the given name and ttl
-	kvStore, err := natslock.NewKeyValue(jets, "my-lock-bucket", time.Hour)
-	if err != nil {
-		return nil, err
-	}
+    kvStore, err := natslock.NewKeyValue(jets, "my-lock-bucket", time.Hour)
+    if err != nil {
+        return nil, err
+    }
 
     // initialize the Locker
-	locker := natslock.New(natslock.WithKeyValueStore(kvStore))
+    locker := natslock.New(natslock.WithKeyValueStore(kvStore))
 
     // then inside your loop ...
 
@@ -33,17 +33,17 @@ The current implementation has the potential to introduce a race condition (beca
     myID, _  := uuid.DefaultGenerator.NewV4()
 
     for {
-            // check if this instance is the lead (or acquire the lock if no one else is)
-            isLead, err := locker.AcquireLead(myID)
-            if err != nil {
-                // error acquiring/checking leader lock (you may want to fail here)
-                continue
-            }
+        // check if this instance is the lead (or acquire the lock if no one else is)
+        isLead, err := locker.AcquireLead(myID)
+        if err != nil {
+            // error acquiring/checking leader lock (you may want to fail here)
+            continue
+        }
 
-            if !isLead {
-                continue
-            }
+        if !isLead {
+            continue
+        }
 
-            // execute remainder of code
+        // execute remainder of code
     }
 ```
