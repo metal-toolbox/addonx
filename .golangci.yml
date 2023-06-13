@@ -3,6 +3,7 @@ linters-settings:
     local-prefixes: github.com/equinixmetal/addonx
   gofumpt:
     extra-rules: true
+  timeout: 5m
 
 linters:
   enable:

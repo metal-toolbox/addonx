@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofrs/uuid"
 	natsserver "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
@@ -46,12 +45,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestNew(t *testing.T) {
-	locker := New()
+	locker, err := New()
+	assert.NoError(t, err)
 
 	lockerType := reflect.TypeOf(locker).String()
 	assert.Equal(t, "*natslock.Locker", lockerType)
 
-	locker = New(WithLogger(zap.NewExample()))
+	locker, err = New(WithLogger(zap.NewExample()))
+	assert.NoError(t, err)
 	assert.Equal(t, true, locker.Logger.Core().Enabled(zap.DebugLevel))
 
 	const bucketName = "test-bucket-1"
@@ -64,7 +65,8 @@ func TestNew(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	locker = New(WithKeyValueStore(kvStore))
+	locker, err = New(WithKeyValueStore(kvStore))
+	assert.NoError(t, err)
 	assert.Equal(t, kvStore, locker.KVStore)
 	assert.Equal(t, bucketName, locker.KVStore.Bucket())
 }
@@ -117,29 +119,26 @@ func TestLocker_AquireLead(t *testing.T) {
 		_ = jetstream.DeleteKeyValue(kv.Bucket())
 	}()
 
-	l := New(WithKeyValueStore(kv))
+	var l1, l2 *Locker
 
-	_, err = l.AcquireLead(uuid.FromStringOrNil(""))
-	assert.Error(t, err)
-
-	testID, err := uuid.DefaultGenerator.NewV4()
+	l1, err = New(WithKeyValueStore(kv))
 	assert.NoError(t, err)
 
-	testID2, err := uuid.DefaultGenerator.NewV4()
+	l2, err = New(WithKeyValueStore(kv))
 	assert.NoError(t, err)
 
 	// when no key exists, we should be able to acquire the lead
-	isLead, err := l.AcquireLead(testID)
+	isLead, err := l1.AcquireLead()
 	assert.NoError(t, err)
 	assert.Equal(t, true, isLead)
 
 	// if the key exists with our id, we should maintain the lead
-	isLead, err = l.AcquireLead(testID)
+	isLead, err = l1.AcquireLead()
 	assert.NoError(t, err)
 	assert.Equal(t, true, isLead)
 
 	// if the key exists with a different id, we should not get the lead
-	isLead, err = l.AcquireLead(testID2)
+	isLead, err = l2.AcquireLead()
 	assert.NoError(t, err)
 	assert.Equal(t, false, isLead)
 
@@ -147,7 +146,7 @@ func TestLocker_AquireLead(t *testing.T) {
 	err = jetstream.DeleteKeyValue(kv.Bucket())
 	assert.NoError(t, err)
 
-	_, err = l.AcquireLead(testID)
+	_, err = l1.AcquireLead()
 	assert.Error(t, err)
 }
 
@@ -163,43 +162,40 @@ func TestLocker_ReleaseLead(t *testing.T) {
 		_ = jetstream.DeleteKeyValue(kv.Bucket())
 	}()
 
-	l := New(WithKeyValueStore(kv))
+	var l1, l2 *Locker
 
-	err = l.ReleaseLead(uuid.FromStringOrNil(""))
-	assert.Error(t, err)
-
-	testID, err := uuid.DefaultGenerator.NewV4()
+	l1, err = New(WithKeyValueStore(kv))
 	assert.NoError(t, err)
 
-	testID2, err := uuid.DefaultGenerator.NewV4()
+	l2, err = New(WithKeyValueStore(kv))
 	assert.NoError(t, err)
 
 	// ok to release lead when key does not exist
-	err = l.ReleaseLead(testID)
+	err = l1.ReleaseLead()
 	assert.NoError(t, err)
 
-	_, err = l.KVStore.PutString(l.KVKey, testID.String())
+	_, err = l1.KVStore.PutString(l1.KVKey, l1.ID.String())
 	assert.NoError(t, err)
 
-	// when key exists and the value doesn't match the given id, it should be left
-	err = l.ReleaseLead(testID2)
+	// when key exists and the value doesn't match our id, it should be left
+	err = l2.ReleaseLead()
 	assert.NoError(t, err)
 
-	_, err = l.KVStore.Get(l.KVKey)
+	_, err = l2.KVStore.Get(l2.KVKey)
 	assert.NoError(t, err)
 
-	// when key exists and the value mathes the given id, it should be deleted
-	err = l.ReleaseLead(testID)
+	// when key exists and the value mathes our id, it should be deleted
+	err = l1.ReleaseLead()
 	assert.NoError(t, err)
 
-	_, err = l.KVStore.Get(l.KVKey)
+	_, err = l1.KVStore.Get(l1.KVKey)
 	assert.EqualError(t, err, nats.ErrKeyNotFound.Error())
 
 	// if the bucket doesn't exist, we should get an error
 	err = jetstream.DeleteKeyValue(kv.Bucket())
 	assert.NoError(t, err)
 
-	err = l.ReleaseLead(testID)
+	err = l1.ReleaseLead()
 	assert.Error(t, err)
 }
 
