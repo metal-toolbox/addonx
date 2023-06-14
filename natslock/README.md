@@ -29,12 +29,9 @@ The current implementation has the potential to introduce a race condition (beca
 
     // then inside your loop ...
 
-    // generate an unique id for this instance
-    myID, _  := uuid.DefaultGenerator.NewV4()
-
     for {
         // check if this instance is the lead (or acquire the lock if no one else is)
-        isLead, err := locker.AcquireLead(myID)
+        isLead, err := locker.AcquireLead()
         if err != nil {
             // error acquiring/checking leader lock (you may want to fail here)
             continue

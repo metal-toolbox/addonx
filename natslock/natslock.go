@@ -11,10 +11,14 @@ import (
 
 // Locker is a distributed lock backed by a JetStream key-value store
 type Locker struct {
+	ID      uuid.UUID
 	KVStore nats.KeyValue
 	KVKey   string
 	Logger  *zap.Logger
 }
+
+// DefaultKeyName is the key name used for the lock
+const DefaultKeyName = "leader"
 
 // Option is a functional configuration option
 type Option func(l *Locker)
@@ -34,9 +38,15 @@ func WithLogger(log *zap.Logger) Option {
 }
 
 // New returns a new locker
-func New(opts ...Option) *Locker {
+func New(opts ...Option) (*Locker, error) {
+	id, err := uuid.DefaultGenerator.NewV4()
+	if err != nil {
+		return nil, err
+	}
+
 	lock := Locker{
-		KVKey:  "leader",
+		ID:     id,
+		KVKey:  DefaultKeyName,
 		Logger: zap.NewNop(),
 	}
 
@@ -44,7 +54,7 @@ func New(opts ...Option) *Locker {
 		opt(&lock)
 	}
 
-	return &lock
+	return &lock, nil
 }
 
 // NewKeyValue returns a JetStream key-value store with the given name. If the
@@ -73,13 +83,9 @@ func NewKeyValue(jets nats.JetStreamContext, name string, ttl time.Duration) (na
 	return jkv, nil
 }
 
-// AcquireLead attempts to acquire the leader lock for the given id and returns true if successful.
+// AcquireLead attempts to acquire the leader lock returns true if successful.
 // If the lock is already held by another id, it will return false.
-func (l *Locker) AcquireLead(id uuid.UUID) (bool, error) {
-	if id == uuid.Nil {
-		return false, ErrBadParameter
-	}
-
+func (l *Locker) AcquireLead() (bool, error) {
 	entry, err := l.KVStore.Get(l.KVKey)
 
 	switch {
@@ -92,7 +98,7 @@ func (l *Locker) AcquireLead(id uuid.UUID) (bool, error) {
 			l.Logger.Warn("unable to parse uuid lock value, will try to update the lock", zap.Error(err))
 
 			// this isn't supposed to happen, so let's try to update the lock and take the lead
-			_, err := l.KVStore.PutString(l.KVKey, id.String())
+			_, err := l.KVStore.PutString(l.KVKey, l.ID.String())
 			if err != nil {
 				l.Logger.Error("error updating lock", zap.Error(err))
 				return false, err
@@ -101,31 +107,31 @@ func (l *Locker) AcquireLead(id uuid.UUID) (bool, error) {
 			return true, nil
 		}
 
-		if uuidVal != id {
-			l.Logger.Info("existing lock found (someone else is the leader)", zap.String("id", id.String()), zap.String("value", uuidVal.String()))
+		if uuidVal != l.ID {
+			l.Logger.Info("existing lock found (someone else is the leader)", zap.String("id", l.ID.String()), zap.String("value", uuidVal.String()))
 			return false, nil
 		}
 
-		l.Logger.Info("existing lock found (i am the leader)", zap.String("id", id.String()), zap.String("value", uuidVal.String()))
+		l.Logger.Info("existing lock found (i am the leader)", zap.String("id", l.ID.String()), zap.String("value", uuidVal.String()))
 
 		// update the lock so the ttl doesn't expire
-		_, err = l.KVStore.PutString(l.KVKey, id.String())
+		_, err = l.KVStore.PutString(l.KVKey, l.ID.String())
 		if err != nil {
-			l.Logger.Warn("unable to update lock", zap.String("id", id.String()), zap.Error(err))
+			l.Logger.Warn("unable to update lock", zap.String("id", l.ID.String()), zap.Error(err))
 		}
 
 		return true, nil
 
 	case errors.Is(err, nats.ErrKeyNotFound):
 		// create the lock and make this id the leader
-		_, err := l.KVStore.PutString(l.KVKey, id.String())
+		_, err := l.KVStore.PutString(l.KVKey, l.ID.String())
 		if err != nil {
 			// log warning and proceed (should be safe as there's no existing lock)
-			l.Logger.Warn("unable to create leader lock, still proceeding as lead", zap.String("id", id.String()), zap.Error(err))
+			l.Logger.Warn("unable to create leader lock, still proceeding as lead", zap.String("id", l.ID.String()), zap.Error(err))
 			return true, nil
 		}
 
-		l.Logger.Info("obtained leader lock", zap.String("id", id.String()))
+		l.Logger.Info("obtained leader lock", zap.String("id", l.ID.String()))
 
 		return true, nil
 
@@ -135,12 +141,8 @@ func (l *Locker) AcquireLead(id uuid.UUID) (bool, error) {
 	}
 }
 
-// ReleaseLead releases the leader lock if the given id belongs to the current leader
-func (l *Locker) ReleaseLead(id uuid.UUID) error {
-	if id == uuid.Nil {
-		return ErrBadParameter
-	}
-
+// ReleaseLead releases the leader lock if it's held by this id
+func (l *Locker) ReleaseLead() error {
 	entry, err := l.KVStore.Get(l.KVKey)
 	if err != nil {
 		if errors.Is(err, nats.ErrKeyNotFound) {
@@ -157,7 +159,7 @@ func (l *Locker) ReleaseLead(id uuid.UUID) error {
 		return nil
 	}
 
-	if uuidVal != id {
+	if uuidVal != l.ID {
 		return nil
 	}
 
