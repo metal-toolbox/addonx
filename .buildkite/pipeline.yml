@@ -12,7 +12,7 @@ steps:
   - label: ":test_tube: test"
     key: "test"
     plugins:
-      - ssh://git@github.com/packethost/ssm-buildkite-plugin#v1.0.3:
+      - ssh://git@github.com/packethost/ssm-buildkite-plugin#v1.0.4:
           parameters:
             GITHUB_TOKEN: /buildkite/github/personal-access-token/v1
       - docker#v5.7.0:
