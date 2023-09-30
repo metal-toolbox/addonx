@@ -1,6 +1,3 @@
-env:
-  GOPRIVATE: github.com/equinixmetal/*,go.equinixmetal.net
-
 steps:
   - label: ":golangci-lint: lint :lint-roller:"
     key: "lint"
@@ -12,13 +9,6 @@ steps:
   - label: ":test_tube: test"
     key: "test"
     plugins:
-      - ssh://git@github.com/packethost/ssm-buildkite-plugin#v1.0.3:
-          parameters:
-            GITHUB_TOKEN: /buildkite/github/personal-access-token/v1
       - docker#v5.7.0:
           image: "golang:1.20"
-          environment:
-            - "GOPRIVATE"
-            - "GITHUB_TOKEN"
-          entrypoint: ./scripts/ci_entrypoint.sh
           command: ["go", "test", "-cover" ,"-race", "./..."]
