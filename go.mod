@@ -1,4 +1,4 @@
-module github.com/equinixmetal/addonx
+module github.com/metal-toolbox/addonx
 
 go 1.20
 
