@@ -7,7 +7,7 @@ require (
 	github.com/nats-io/nats-server/v2 v2.9.17
 	github.com/nats-io/nats.go v1.27.0
 	github.com/stretchr/testify v1.8.3
-	go.uber.org/zap v1.24.0
+	go.uber.org/zap v1.27.0
 )
 
 require (
