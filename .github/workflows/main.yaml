@@ -1,0 +1,27 @@
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  lint: 
+    name: 📎 lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: metal-toolbox/ci-toolbox/actions/golangci-lint@init
+
+  test:
+    name: 🧪 test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: metal-toolbox/ci-toolbox/actions/setup-go@init
+      - name: tests
+        run: go test -cover -race ./...
+
+  scan:
+    name: 🔍 scan
+    permissions:
+      contents: read
+      security-events: write
+    uses: metal-toolbox/ci-toolbox/.github/workflows/trivy.yaml@init
+    with:
+      scan-type: fs
