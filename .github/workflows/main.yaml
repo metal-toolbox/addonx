@@ -7,13 +7,13 @@ jobs:
     name: 📎 lint
     runs-on: ubuntu-latest
     steps:
-      - uses: metal-toolbox/ci-toolbox/actions/golangci-lint@init
+      - uses: metal-toolbox/ci-toolbox/actions/golangci-lint@v0.0.1
 
   test:
     name: 🧪 test
     runs-on: ubuntu-latest
     steps:
-      - uses: metal-toolbox/ci-toolbox/actions/setup-go@init
+      - uses: metal-toolbox/ci-toolbox/actions/setup-go@v0.0.1
       - name: tests
         run: go test -cover -race ./...
 
@@ -22,6 +22,6 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: metal-toolbox/ci-toolbox/.github/workflows/trivy.yaml@init
+    uses: metal-toolbox/ci-toolbox/.github/workflows/trivy.yaml@v0.0.1
     with:
       scan-type: fs
