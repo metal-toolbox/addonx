@@ -22,6 +22,6 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: metal-toolbox/ci-toolbox/.github/workflows/trivy.yaml@v0.0.1
+    uses: metal-toolbox/ci-toolbox/.github/workflows/trivy.yaml@v0.0.2
     with:
       scan-type: fs
