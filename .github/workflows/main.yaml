@@ -7,13 +7,13 @@ jobs:
     name: 📎 lint
     runs-on: ubuntu-latest
     steps:
-      - uses: metal-toolbox/ci-toolbox/actions/golangci-lint@v0.0.1
+      - uses: metal-toolbox/ci-toolbox/actions/golangci-lint@v0.0.2
 
   test:
     name: 🧪 test
     runs-on: ubuntu-latest
     steps:
-      - uses: metal-toolbox/ci-toolbox/actions/setup-go@v0.0.1
+      - uses: metal-toolbox/ci-toolbox/actions/setup-go@v0.0.2
       - name: tests
         run: go test -cover -race ./...
 
